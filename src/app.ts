@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import { authRoutes } from './routes/authRoutes';
+import { eventRoutes } from './routes/eventRoutes';
+import { webhookRoutes } from './routes/webhookRoutes';
 
 const app = express();
 
@@ -8,6 +11,9 @@ app.use(express.json());
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date() });
 });
+app.use('/api/auth', authRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 app.use(
     (
