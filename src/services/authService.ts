@@ -69,7 +69,7 @@ export class AuthService {
         await redis.del(`otp:${email}`);
         await redis.del(`temp_reg:${email}`);
 
-        const token = this.generateToken(user.id);
+        const token = this.generateToken(user.id, user.role);
         return { user, token };
     }
 
@@ -83,12 +83,13 @@ export class AuthService {
             throw new AppError('Please verify your email first', 403);
         }
 
-        const token = this.generateToken(user.id);
+        const token = this.generateToken(user.id, user.role);
         return { user, token };
     }
 
     async sendOtp(email: string) {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log(`🔥 [DEBUG MODE] OTP for ${email} is: ${otp}`);
         await redis.set(`otp:${email}`, otp, 'EX', 600);
 
         const message = `
@@ -97,11 +98,11 @@ export class AuthService {
         <p>This code expires in 10 minutes.</p>
         `;
 
-        await sendEmail(email, 'Your Verification Code', message);
+        // await sendEmail(email, 'Your Verification Code', message);
     }
 
-    private generateToken(userId: string): string {
-        return jwt.sign({ id: userId, role: 'user' }, JWT_SECRET, {
+    private generateToken(userId: string, role: string): string {
+        return jwt.sign({ id: userId, role }, JWT_SECRET, {
             expiresIn: JWT_EXPIRES_IN,
         });
     }

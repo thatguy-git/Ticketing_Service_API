@@ -17,7 +17,7 @@ export const bankingClient = {
     ) {
         try {
             const response = await axios.post(
-                `${BANKING_URL}/api/invoices`,
+                `${BANKING_URL}/invoices`,
                 {
                     amount,
                     reference,
@@ -65,7 +65,7 @@ export const bankingClient = {
                 `CRITICAL: Refund failed for ${transactionId}`,
                 error
             );
-            // We don't throw here to avoid crashing the cleanup process, but we log strictly
+            throw new AppError('Refund failed', 500);
         }
     },
 };

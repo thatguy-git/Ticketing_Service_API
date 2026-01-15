@@ -10,10 +10,9 @@ if (
     );
 }
 
-export const emailTransporter = nodemailer.createTransport({
+const emailTransporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: parseInt(process.env.EMAIL_PORT, 10),
-    secure: false, // Added for TLS on port 587 (Gmail requirement)
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -23,7 +22,7 @@ export const emailTransporter = nodemailer.createTransport({
 export const sendEmail = async (to: string, subject: string, text: string) => {
     try {
         const info = await emailTransporter.sendMail({
-            from: process.env.EMAIL_USER, // Changed to match authenticated user (Gmail requirement)
+            from: process.env.EMAIL_USER,
             to,
             subject,
             text,

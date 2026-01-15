@@ -8,10 +8,38 @@ export class ReservationService {
         const seat = await prisma.seat.findUnique({ where: { id: seatId } });
 
         if (!seat) throw new AppError('Seat not found', 404);
-        if (seat.status !== 'AVAILABLE')
-            throw new AppError('Seat is not available', 409);
 
         const result = await prisma.$transaction(async (tx) => {
+            if (seat.status === 'HELD') {
+                const reservation = await tx.reservation.findFirst({
+                    where: { seatId },
+                });
+                if (!reservation) {
+                    throw new AppError(
+                        'Data inconsistency: Seat is HELD but no reservation found',
+                        500
+                    );
+                }
+                if (reservation && reservation.expiresAt < new Date()) {
+                    await tx.reservation.delete({
+                        where: { id: reservation.id },
+                    });
+                    await tx.seat.update({
+                        where: { id: seatId },
+                        data: {
+                            status: 'AVAILABLE',
+                            version: { increment: 1 },
+                        },
+                    });
+
+                    seat.status = 'AVAILABLE';
+                    seat.version += 1;
+                }
+            }
+
+            if (seat.status !== 'AVAILABLE')
+                throw new AppError('Seat is not available', 409);
+
             const updatedBatch = await tx.seat.updateMany({
                 where: {
                     id: seatId,

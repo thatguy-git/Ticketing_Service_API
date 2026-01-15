@@ -3,6 +3,7 @@ import cors from 'cors';
 import { authRoutes } from './routes/authRoutes';
 import { eventRoutes } from './routes/eventRoutes';
 import { webhookRoutes } from './routes/webhookRoutes';
+import { bookingRoutes } from './routes/bookingRoutes';
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.use(
     (

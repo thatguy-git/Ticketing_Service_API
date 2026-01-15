@@ -3,8 +3,6 @@ import { redis } from '../configs/redis';
 import { AppError } from '../utils/AppError';
 
 export class EventService {
-    // 1. CREATE EVENT & SEED SEATS
-    // We simulate a venue with 'rowCount' rows and 'seatsPerRow' columns
     async createEvent(
         name: string,
         date: string,
@@ -12,9 +10,7 @@ export class EventService {
         seatsPerRow: number,
         price: number
     ) {
-        // Transaction: Create Event AND Seats together (or fail together)
         const event = await prisma.$transaction(async (tx) => {
-            // A. Create the Event
             const newEvent = await tx.event.create({
                 data: {
                     name,
@@ -22,26 +18,23 @@ export class EventService {
                 },
             });
 
-            // B. Generate Seats (e.g., Row A1..A10, B1..B10)
             const seatsData = [];
-            const rows = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'; // Row labels
+            const rows = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
             for (let r = 0; r < rowCount; r++) {
-                const rowLabel = rows[r] || `Row${r + 1}`; // Handle >26 rows gracefully
+                const rowLabel = rows[r] || `Row${r + 1}`;
                 for (let s = 1; s <= seatsPerRow; s++) {
                     seatsData.push({
                         eventId: newEvent.id,
                         row: rowLabel,
                         number: s,
-                        price: price, // Flat price for simplicity
+                        price: price,
                         status: 'AVAILABLE',
                         version: 0,
                     });
                 }
             }
 
-            // Bulk Insert Seats
-            // Note: createMany is supported in Postgres
             await tx.seat.createMany({
                 data: seatsData as any,
             });

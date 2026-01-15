@@ -1,53 +1,40 @@
 import { prisma } from '../configs/db';
-import { reservationService } from './reservationService'; // Your existing service
-import { bankingClient } from '../integrations/bankingClient'; // The client we wrote
+import { reservationService } from './reservationService';
+import { bankingClient } from '../integrations/bankingClient';
 import { AppError } from '../utils/AppError';
 
 export class BookingService {
-    // PHASE 1: START THE PROCESS
-    // Called by: User (POST /api/bookings)
     async initiateBooking(userId: string, seatId: string) {
-        // 1. Hold the Seat (Reusing your logic!)
-        // This ensures no one else can grab it while we set up payment
         const reservation = await reservationService.holdSeat(userId, seatId);
-
-        // 2. Fetch Seat details for the Invoice
         const seat = await prisma.seat.findUnique({ where: { id: seatId } });
         if (!seat) throw new AppError('Seat data corrupted', 500);
 
-        // 3. Create the Invoice on Banking Service
+        // Create the Invoice on Banking Service
         // We link the 'reference' to our Reservation ID so we can track it later
         const invoiceResponse = await bankingClient.createInvoice(
-            Number(seat.price), // Ensure price is a number
+            Number(seat.price),
             reservation.id, // REFERENCE: This connects Payment -> Reservation
             `Ticket for Seat ${seat.row}-${seat.number}`
         );
 
-        // 4. Return info so User can pay
         return {
             status: 'pending_payment',
             reservationId: reservation.id,
-            invoiceId: invoiceResponse.invoiceId, // User needs this to pay the bank
+            invoiceId: invoiceResponse.invoiceId,
             expiresAt: reservation.expiresAt,
         };
     }
 
-    // PHASE 2: FINISH THE PROCESS
-    // Called by: Webhook Controller (when Bank says "PAID")
     async finalizeBooking(reservationId: string, transactionId: string) {
         return await prisma.$transaction(async (tx) => {
-            // 1. Find the Reservation
             const reservation = await tx.reservation.findUnique({
                 where: { id: reservationId },
-                include: { seat: true }, // Need price/seat info
+                include: { seat: true },
             });
 
-            // ⚠️ Edge Case: Reservation expired or already processed?
             if (!reservation) {
-                // Check if it was already booked (Idempotency)
-                // This prevents crashing if the Bank sends the webhook twice
                 const existingBooking = await tx.booking.findFirst({
-                    where: { seatId: reservationId }, // Assuming logic to track by Ref
+                    where: { seatId: reservationId },
                 });
 
                 if (existingBooking) {
@@ -61,7 +48,6 @@ export class BookingService {
                 );
             }
 
-            // 2. Create the Permanent Booking
             const booking = await tx.booking.create({
                 data: {
                     userId: reservation.userId,
@@ -73,22 +59,53 @@ export class BookingService {
                 },
             });
 
-            // 3. Update Seat to Final State 'BOOKED'
             await tx.seat.update({
                 where: { id: reservation.seatId },
                 data: {
                     status: 'BOOKED',
-                    version: { increment: 1 }, // Keep versioning for safety
+                    version: { increment: 1 },
                 },
             });
 
-            // 4. Delete the Temporary Reservation
-            // We don't need the "Hold" anymore because we have the "Booking"
             await tx.reservation.delete({
                 where: { id: reservationId },
             });
 
             return booking;
+        });
+    }
+
+    async releaseReservation(reservationId: string) {
+        return await prisma.$transaction(async (tx) => {
+            const reservation = await tx.reservation.findUnique({
+                where: { id: reservationId },
+            });
+
+            if (!reservation) {
+                console.log(
+                    `Reservation ${reservationId} not found or already released.`
+                );
+                return { released: false, message: 'Reservation not found' };
+            }
+
+            // Delete the reservation
+            await tx.reservation.delete({
+                where: { id: reservationId },
+            });
+
+            // Reset the seat to AVAILABLE
+            await tx.seat.update({
+                where: { id: reservation.seatId },
+                data: {
+                    status: 'AVAILABLE',
+                    version: { increment: 1 },
+                },
+            });
+
+            console.log(
+                `Reservation ${reservationId} released, seat ${reservation.seatId} now available.`
+            );
+            return { released: true, seatId: reservation.seatId };
         });
     }
 }

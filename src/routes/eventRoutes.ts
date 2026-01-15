@@ -8,11 +8,11 @@ const router = Router();
 router.get('/', eventController.getEvents);
 router.get('/:id/seats', eventController.getEventSeats);
 
-// Admin Routes, not yet protected
+// Admin Routes
 router.post(
     '/',
     authenticateToken,
-    checkRole(['admin']),
+    checkRole(['ADMIN']),
     eventController.createEvent
 );
 

@@ -13,26 +13,36 @@ export async function handlePaymentWebhook(
 
         console.log(`🔔 Webhook received: ${event} for Ref: ${reference}`);
 
-        // We only care if the money was actually paid
+        // Handle successful payment
         if (event === 'INVOICE_PAID' && status === 'PAID') {
-            // ✅ FIX: Pass BOTH the reference (Reservation ID) AND invoiceId (Transaction ID)
             const booking = await bookingService.finalizeBooking(
                 reference,
                 invoiceId
             );
 
             console.log(`✅ Booking confirmed: ${booking.id}`);
-
-            // Return 200 to tell the Bank "We got it"
             return res.status(200).json({ received: true });
         }
 
-        // If it's expired or failed, we just acknowledge receipt
+        // Handle expired or failed invoices by releasing the reservation
+        if (event === 'INVOICE_EXPIRED' || event === 'INVOICE_FAILED') {
+            const releaseResult = await bookingService.releaseReservation(
+                reference
+            );
+
+            console.log(
+                `🆓 Reservation released for expired/failed invoice: ${reference}`
+            );
+            return res
+                .status(200)
+                .json({ received: true, released: releaseResult.released });
+        }
+
+        // For other events, acknowledge but ignore
         res.status(200).json({ received: true, ignored: true });
     } catch (error) {
         console.error('❌ Webhook processing error:', error);
-        // Always return 200 OK to the bank so it doesn't keep retrying forever
-        // (In a real app, you might return 500 only if you want the bank to retry)
+        // Always return 200 to prevent retries
         res.status(200).json({
             received: true,
             error: 'Internal processing failed',
