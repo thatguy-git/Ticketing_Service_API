@@ -1,31 +1,41 @@
 import axios from 'axios';
 import { AppError } from '../utils/AppError';
 
-if (!process.env.BANKING_SERVICE_URL || !process.env.YOUR_BANK_API_KEY) {
+if (!process.env.BANKING_SERVICE_URL) {
     throw new Error(
         'Banking service configuration is missing in environment variables'
     );
 }
 const BANKING_URL = process.env.BANKING_SERVICE_URL;
-const MERCHANT_API_KEY = process.env.YOUR_BANK_API_KEY;
 
 export const bankingClient = {
     async createInvoice(
         amount: number,
-        reference: string,
-        description: string
+        reservationId: string,
+        description: string,
+        ticketReference: string,
+        apiKey: string
     ) {
         try {
+            const url = BANKING_URL.includes(':id')
+                ? BANKING_URL.replace(':id', reservationId)
+                : BANKING_URL;
+
             const response = await axios.post(
-                `${BANKING_URL}/invoices`,
+                url,
                 {
                     amount,
-                    reference,
+                    reference: ticketReference,
                     description,
                 },
                 {
                     headers: {
-                        'api-key': MERCHANT_API_KEY,
+                        // include multiple common header names in case the banking service
+                        // expects a different header (some services use x-api-key, others api-key,
+                        // and some expect an Authorization Bearer token)
+                        'x-api-key': apiKey,
+                        'api-key': apiKey,
+                        Authorization: `Bearer ${apiKey}`,
                     },
                 }
             );
@@ -48,14 +58,14 @@ export const bankingClient = {
     },
 
     //not functional yet
-    async refundPayment(transactionId: string) {
+    async refundPayment(transactionId: string, apiKey: string) {
         try {
             await axios.post(
                 `${BANKING_URL}/api/refund`,
                 { transactionId },
                 {
                     headers: {
-                        'x-api-key': MERCHANT_API_KEY, // Only the Merchant can refund their own transactions
+                        'x-api-key': apiKey, // Only the Merchant can refund their own transactions
                     },
                 }
             );

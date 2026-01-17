@@ -2,31 +2,43 @@ import { Request, Response } from 'express';
 import { eventService } from '../services/eventService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
+import { AuthenticatedRequest } from '../middlewares/authMiddleware';
 
-export const createEvent = asyncHandler(async (req: Request, res: Response) => {
-    const { name, date, rows, seatsPerRow, price } = req.body;
+export const createEvent = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+        const { name, date, rows, seatsPerRow, price } = req.body;
+        const organizerId = req.user.id;
 
-    if (!name || !date || !rows || !seatsPerRow || !price) {
-        throw new AppError(
-            'Missing details (name, date, rows, seatsPerRow, price)',
-            400
+        if (!name || !date || !rows || !seatsPerRow || !price) {
+            throw new AppError(
+                'Missing details (name, date, rows, seatsPerRow, price)',
+                400
+            );
+        }
+
+        if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
+            throw new AppError(
+                'Only organizers and admins can create events',
+                403
+            );
+        }
+
+        const event = await eventService.createEvent(
+            name,
+            date,
+            rows,
+            seatsPerRow,
+            price,
+            organizerId
         );
+
+        res.status(201).json({
+            status: 'success',
+            data: { event },
+            message: `Event created with ${rows * seatsPerRow} seats!`,
+        });
     }
-
-    const event = await eventService.createEvent(
-        name,
-        date,
-        rows,
-        seatsPerRow,
-        price
-    );
-
-    res.status(201).json({
-        status: 'success',
-        data: { event },
-        message: `Event created with ${rows * seatsPerRow} seats!`,
-    });
-});
+);
 
 export const getEvents = asyncHandler(async (req: Request, res: Response) => {
     const events = await eventService.getEvents();

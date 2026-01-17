@@ -2,19 +2,36 @@ import { prisma } from '../configs/db';
 import { reservationService } from './reservationService';
 import { bankingClient } from '../integrations/bankingClient';
 import { AppError } from '../utils/AppError';
+import { v4 as uuidv4 } from 'uuid';
 
 export class BookingService {
     async initiateBooking(userId: string, seatId: string) {
         const reservation = await reservationService.holdSeat(userId, seatId);
-        const seat = await prisma.seat.findUnique({ where: { id: seatId } });
+        const myReference = `TKT-${uuidv4()}`;
+        const seat = await prisma.seat.findUnique({
+            where: { id: seatId },
+            include: { event: { include: { organizer: true } } },
+        });
         if (!seat) throw new AppError('Seat data corrupted', 500);
 
-        // Create the Invoice on Banking Service
-        // We link the 'reference' to our Reservation ID so we can track it later
+        if (!seat.event.organizerId) {
+            throw new AppError('Event has no organizer assigned', 400);
+        }
+
+        if (!seat.event.organizer?.paymentApiKey) {
+            throw new AppError(
+                'Event organizer has no payment API key configured',
+                400
+            );
+        }
+
+        // Create the Invoice on Banking Service using organizer's API key
         const invoiceResponse = await bankingClient.createInvoice(
             Number(seat.price),
-            reservation.id, // REFERENCE: This connects Payment -> Reservation
-            `Ticket for Seat ${seat.row}-${seat.number}`
+            String(seat.number), // banking service expects seat number as the id
+            `Ticket for Seat ${seat.row}-${seat.number}`,
+            myReference, // External ticket reference for banking service
+            seat.event.organizer.paymentApiKey
         );
 
         return {

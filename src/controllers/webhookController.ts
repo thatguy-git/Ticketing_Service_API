@@ -1,4 +1,3 @@
-// src/controllers/webhookController.ts
 import { NextFunction, Request, Response } from 'express';
 import { bookingService } from '../services/bookingService';
 

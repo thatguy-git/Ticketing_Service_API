@@ -15,19 +15,23 @@ model User {
   role              Role      @default(USER)
   isVerified        Boolean   @default(false)
   verificationToken String?   
+  paymentApiKey     String?   // Optional API key for banking integration
   bookings          Booking[]
   reservations      Reservation[]
+  organizedEvents   Event[]   @relation("EventOrganizer")
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }
 
 model Event {
-  id        String   @id @default(uuid())
-  name      String
-  date      DateTime
-  seats     Seat[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  name        String
+  date        DateTime
+  organizerId String
+  organizer   User     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  seats       Seat[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Seat {

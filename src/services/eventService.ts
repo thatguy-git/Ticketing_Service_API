@@ -8,13 +8,15 @@ export class EventService {
         date: string,
         rowCount: number,
         seatsPerRow: number,
-        price: number
+        price: number,
+        organizerId: string
     ) {
         const event = await prisma.$transaction(async (tx) => {
             const newEvent = await tx.event.create({
                 data: {
                     name,
                     date: new Date(date),
+                    organizerId,
                 },
             });
 

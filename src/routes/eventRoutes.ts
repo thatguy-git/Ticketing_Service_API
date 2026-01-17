@@ -12,7 +12,7 @@ router.get('/:id/seats', eventController.getEventSeats);
 router.post(
     '/',
     authenticateToken,
-    checkRole(['ADMIN']),
+    checkRole(['ADMIN', 'ORGANIZER']),
     eventController.createEvent
 );
 
