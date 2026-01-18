@@ -1,6 +1,7 @@
 import { prisma } from '../configs/db';
 import { redis } from '../configs/redis';
 import { AppError } from '../utils/AppError';
+import { toMinorUnit, toMajorUnit } from '../utils/money';
 
 export class EventService {
     async createEvent(
@@ -9,7 +10,7 @@ export class EventService {
         rowCount: number,
         seatsPerRow: number,
         price: number,
-        organizerId: string
+        organizerId: string,
     ) {
         const event = await prisma.$transaction(async (tx) => {
             const newEvent = await tx.event.create({
@@ -30,7 +31,7 @@ export class EventService {
                         eventId: newEvent.id,
                         row: rowLabel,
                         number: s,
-                        price: price,
+                        price: toMinorUnit(price),
                         status: 'AVAILABLE',
                         version: 0,
                     });
@@ -71,8 +72,17 @@ export class EventService {
         if (!seats.length) {
             throw new AppError('Event not found or no seats available', 404);
         }
-        await redis.set(cacheKey, JSON.stringify(seats), 'EX', 10);
-        return seats;
+
+        // 👇 STEP 1: Convert BigInt (27000n) to Major Unit Number (270)
+        const formattedSeats = seats.map((seat) => ({
+            ...seat,
+            price: toMajorUnit(seat.price),
+        }));
+
+        // 👇 STEP 2: Cache the FORMATTED data (Numbers, not BigInts)
+        await redis.set(cacheKey, JSON.stringify(formattedSeats), 'EX', 10);
+
+        return formattedSeats;
     }
 }
 

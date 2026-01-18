@@ -3,6 +3,7 @@ import { eventService } from '../services/eventService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
+import { toMajorUnit } from '../utils/money';
 
 export const createEvent = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
@@ -12,14 +13,14 @@ export const createEvent = asyncHandler(
         if (!name || !date || !rows || !seatsPerRow || !price) {
             throw new AppError(
                 'Missing details (name, date, rows, seatsPerRow, price)',
-                400
+                400,
             );
         }
 
         if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
             throw new AppError(
                 'Only organizers and admins can create events',
-                403
+                403,
             );
         }
 
@@ -29,7 +30,7 @@ export const createEvent = asyncHandler(
             rows,
             seatsPerRow,
             price,
-            organizerId
+            organizerId,
         );
 
         res.status(201).json({
@@ -37,12 +38,15 @@ export const createEvent = asyncHandler(
             data: { event },
             message: `Event created with ${rows * seatsPerRow} seats!`,
         });
-    }
+    },
 );
 
 export const getEvents = asyncHandler(async (req: Request, res: Response) => {
     const events = await eventService.getEvents();
-    res.status(200).json({ status: 'success', data: { events } });
+    res.status(200).json({
+        status: 'success',
+        data: { events },
+    });
 });
 
 export const getEventSeats = asyncHandler(
@@ -54,5 +58,5 @@ export const getEventSeats = asyncHandler(
             results: seats.length,
             data: { seats },
         });
-    }
+    },
 );
