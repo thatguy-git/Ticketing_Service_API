@@ -25,13 +25,19 @@ export class BookingService {
             );
         }
 
+        // Build webhook URL for the banking service to call back to
+        const webhookUrl =
+            process.env.WEBHOOK_BASE_URL ||
+            `http://localhost:${process.env.PORT || 4000}/api/webhooks/bank`;
+
         // Create the Invoice on Banking Service using organizer's API key
         const invoiceResponse = await bankingClient.createInvoice(
             Number(seat.price),
             String(seat.number), // banking service expects seat number as the id
             `Ticket for Seat ${seat.row}-${seat.number}`,
             myReference, // External ticket reference for banking service
-            seat.event.organizer.paymentApiKey
+            seat.event.organizer.paymentApiKey,
+            webhookUrl
         );
 
         return {
@@ -42,16 +48,16 @@ export class BookingService {
         };
     }
 
-    async finalizeBooking(reservationId: string, transactionId: string) {
+    async finalizeBooking(referenceString: string, transactionId: string) {
         return await prisma.$transaction(async (tx) => {
             const reservation = await tx.reservation.findUnique({
-                where: { id: reservationId },
+                where: { id: referenceString },
                 include: { seat: true },
             });
 
             if (!reservation) {
                 const existingBooking = await tx.booking.findFirst({
-                    where: { seatId: reservationId },
+                    where: { seatId: transactionId },
                 });
 
                 if (existingBooking) {
@@ -85,7 +91,7 @@ export class BookingService {
             });
 
             await tx.reservation.delete({
-                where: { id: reservationId },
+                where: { id: referenceString }, //
             });
 
             return booking;

@@ -14,7 +14,8 @@ export const bankingClient = {
         reservationId: string,
         description: string,
         ticketReference: string,
-        apiKey: string
+        apiKey: string,
+        webhookUrl?: string
     ) {
         try {
             const url = BANKING_URL.includes(':id')
@@ -27,15 +28,11 @@ export const bankingClient = {
                     amount,
                     reference: ticketReference,
                     description,
+                    webhookUrl,
                 },
                 {
                     headers: {
-                        // include multiple common header names in case the banking service
-                        // expects a different header (some services use x-api-key, others api-key,
-                        // and some expect an Authorization Bearer token)
                         'x-api-key': apiKey,
-                        'api-key': apiKey,
-                        Authorization: `Bearer ${apiKey}`,
                     },
                 }
             );
@@ -51,8 +48,31 @@ export const bankingClient = {
                 error.response?.data || error.message
             );
 
+            const respData = error.response?.data;
+            const status = error.response?.status;
+
+            const isAuthError =
+                status === 401 ||
+                status === 403 ||
+                String(respData?.error || respData?.message || '')
+                    .toLowerCase()
+                    .includes('token') ||
+                String(respData?.error || respData?.message || '')
+                    .toLowerCase()
+                    .includes('access denied');
+
             const msg =
-                error.response?.data?.message || 'Banking service unavailable';
+                respData?.message ||
+                respData?.error ||
+                'Banking service unavailable';
+            // If it's an auth error, surface a clearer message for the organizer key
+            if (isAuthError) {
+                throw new AppError(
+                    'Organizer payment API key invalid or expired. Verify organizer settings.',
+                    400
+                );
+            }
+
             throw new AppError(msg, 503);
         }
     },

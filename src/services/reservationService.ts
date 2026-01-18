@@ -3,6 +3,9 @@ import { AppError } from '../utils/AppError';
 
 const HOLD_DURATION_MINUTES = 10;
 
+import { v4 as uuidv4 } from 'uuid'; // 👈 Make sure to import this at the top
+// ... other imports
+
 export class ReservationService {
     async holdSeat(userId: string, seatId: string) {
         const seat = await prisma.seat.findUnique({ where: { id: seatId } });
@@ -10,16 +13,19 @@ export class ReservationService {
         if (!seat) throw new AppError('Seat not found', 404);
 
         const result = await prisma.$transaction(async (tx) => {
+            // 1. Check if held but expired (Cleanup logic)
             if (seat.status === 'HELD') {
                 const reservation = await tx.reservation.findFirst({
                     where: { seatId },
                 });
+
                 if (!reservation) {
                     throw new AppError(
                         'Data inconsistency: Seat is HELD but no reservation found',
                         500
                     );
                 }
+
                 if (reservation && reservation.expiresAt < new Date()) {
                     await tx.reservation.delete({
                         where: { id: reservation.id },
@@ -32,6 +38,7 @@ export class ReservationService {
                         },
                     });
 
+                    // Update local object so the next check passes
                     seat.status = 'AVAILABLE';
                     seat.version += 1;
                 }
@@ -40,6 +47,7 @@ export class ReservationService {
             if (seat.status !== 'AVAILABLE')
                 throw new AppError('Seat is not available', 409);
 
+            // 2. Optimistic Concurrency Lock
             const updatedBatch = await tx.seat.updateMany({
                 where: {
                     id: seatId,
@@ -59,13 +67,17 @@ export class ReservationService {
             const expiresAt = new Date();
             expiresAt.setMinutes(
                 expiresAt.getMinutes() + HOLD_DURATION_MINUTES
-            );
+            ); // Hardcoded or use constant
+
+            // 3. 👇 GENERATE REFERENCE HERE
+            const myReference = `TKT-${uuidv4()}`;
 
             const reservation = await tx.reservation.create({
                 data: {
                     userId,
                     seatId,
                     expiresAt,
+                    reference: myReference, // 👈 ADDED THIS
                 },
             });
 

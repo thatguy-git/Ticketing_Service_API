@@ -51,9 +51,11 @@ model Reservation {
   id        String   @id @default(uuid())
   expiresAt DateTime
   userId    String
+  reference String   @unique
   user      User     @relation(fields: [userId], references: [id])
   seatId    String   @unique
   seat      Seat     @relation(fields: [seatId], references: [id])
+  invoiceId String?
   createdAt DateTime @default(now())
 }
 
