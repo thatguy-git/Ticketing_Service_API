@@ -1,7 +1,7 @@
 import { prisma } from '../configs/db';
 import { AppError } from '../utils/AppError';
 
-const HOLD_DURATION_MINUTES = 10;
+const HOLD_DURATION_MINUTES = 15;
 
 import { v4 as uuidv4 } from 'uuid'; // 👈 Make sure to import this at the top
 // ... other imports

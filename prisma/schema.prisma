@@ -61,8 +61,7 @@ model Reservation {
 
 model Booking {
   id            String        @id @default(uuid())
-  
-  amount        Int           
+  amount        BigInt           
   transactionId String       
   status        BookingStatus @default(CONFIRMED) 
   userId        String

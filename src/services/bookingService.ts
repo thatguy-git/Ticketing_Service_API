@@ -21,7 +21,7 @@ export class BookingService {
         if (!seat.event.organizer?.paymentApiKey) {
             throw new AppError(
                 'Event organizer has no payment API key configured',
-                400
+                400,
             );
         }
 
@@ -30,6 +30,9 @@ export class BookingService {
             process.env.WEBHOOK_BASE_URL ||
             `http://localhost:${process.env.PORT || 4000}/api/webhooks/bank`;
 
+        // Use the same expiration time as the reservation for consistency
+        const invoiceExpiresAt = reservation.expiresAt;
+
         // Create the Invoice on Banking Service using organizer's API key
         const invoiceResponse = await bankingClient.createInvoice(
             Number(seat.price),
@@ -37,7 +40,8 @@ export class BookingService {
             `Ticket for Seat ${seat.row}-${seat.number}`,
             myReference, // External ticket reference for banking service
             seat.event.organizer.paymentApiKey,
-            webhookUrl
+            webhookUrl,
+            invoiceExpiresAt,
         );
 
         return {
@@ -67,7 +71,7 @@ export class BookingService {
 
                 throw new AppError(
                     'Reservation expired or not found. Manual Refund needed.',
-                    400
+                    400,
                 );
             }
 
@@ -106,7 +110,7 @@ export class BookingService {
 
             if (!reservation) {
                 console.log(
-                    `Reservation ${reservationId} not found or already released.`
+                    `Reservation ${reservationId} not found or already released.`,
                 );
                 return { released: false, message: 'Reservation not found' };
             }
@@ -126,7 +130,7 @@ export class BookingService {
             });
 
             console.log(
-                `Reservation ${reservationId} released, seat ${reservation.seatId} now available.`
+                `Reservation ${reservationId} released, seat ${reservation.seatId} now available.`,
             );
             return { released: true, seatId: reservation.seatId };
         });

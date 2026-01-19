@@ -3,7 +3,7 @@ import { AppError } from '../utils/AppError';
 
 if (!process.env.BANKING_SERVICE_URL) {
     throw new Error(
-        'Banking service configuration is missing in environment variables'
+        'Banking service configuration is missing in environment variables',
     );
 }
 const BANKING_URL = process.env.BANKING_SERVICE_URL;
@@ -15,7 +15,8 @@ export const bankingClient = {
         description: string,
         ticketReference: string,
         apiKey: string,
-        webhookUrl?: string
+        webhookUrl?: string,
+        expiresAt?: Date,
     ) {
         try {
             const url = BANKING_URL.includes(':id')
@@ -29,12 +30,13 @@ export const bankingClient = {
                     reference: ticketReference,
                     description,
                     webhookUrl,
+                    expiresAt: expiresAt?.toISOString(),
                 },
                 {
                     headers: {
                         'x-api-key': apiKey,
                     },
-                }
+                },
             );
 
             return {
@@ -45,7 +47,7 @@ export const bankingClient = {
         } catch (error: any) {
             console.error(
                 'Banking API Error:',
-                error.response?.data || error.message
+                error.response?.data || error.message,
             );
 
             const respData = error.response?.data;
@@ -69,7 +71,7 @@ export const bankingClient = {
             if (isAuthError) {
                 throw new AppError(
                     'Organizer payment API key invalid or expired. Verify organizer settings.',
-                    400
+                    400,
                 );
             }
 
@@ -87,13 +89,13 @@ export const bankingClient = {
                     headers: {
                         'x-api-key': apiKey, // Only the Merchant can refund their own transactions
                     },
-                }
+                },
             );
             console.log(`Refunded transaction: ${transactionId}`);
         } catch (error) {
             console.error(
                 `CRITICAL: Refund failed for ${transactionId}`,
-                error
+                error,
             );
             throw new AppError('Refund failed', 500);
         }

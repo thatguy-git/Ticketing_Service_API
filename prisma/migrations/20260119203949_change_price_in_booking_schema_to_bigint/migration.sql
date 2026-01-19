@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Booking" ALTER COLUMN "amount" SET DATA TYPE BIGINT;
+
+-- AlterTable
+ALTER TABLE "Seat" ALTER COLUMN "price" SET DATA TYPE BIGINT;
