@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid'; // 👈 Make sure to import this at the top
 // ... other imports
 
 export class ReservationService {
-    async holdSeat(userId: string, seatId: string) {
+    async holdSeat(userId: string, seatId: string, reference?: string) {
         const seat = await prisma.seat.findUnique({ where: { id: seatId } });
 
         if (!seat) throw new AppError('Seat not found', 404);
@@ -22,7 +22,7 @@ export class ReservationService {
                 if (!reservation) {
                     throw new AppError(
                         'Data inconsistency: Seat is HELD but no reservation found',
-                        500
+                        500,
                     );
                 }
 
@@ -44,8 +44,15 @@ export class ReservationService {
                 }
             }
 
-            if (seat.status !== 'AVAILABLE')
-                throw new AppError('Seat is not available', 409);
+            if (seat.status !== 'AVAILABLE') {
+                let message = 'Seat is not available';
+                if (seat.status === 'BOOKED') {
+                    message = 'seat is already booked';
+                } else if (seat.status === 'HELD') {
+                    message = 'seat is held';
+                }
+                throw new AppError(message, 409);
+            }
 
             // 2. Optimistic Concurrency Lock
             const updatedBatch = await tx.seat.updateMany({
@@ -66,11 +73,11 @@ export class ReservationService {
 
             const expiresAt = new Date();
             expiresAt.setMinutes(
-                expiresAt.getMinutes() + HOLD_DURATION_MINUTES
+                expiresAt.getMinutes() + HOLD_DURATION_MINUTES,
             ); // Hardcoded or use constant
 
             // 3. 👇 GENERATE REFERENCE HERE
-            const myReference = `TKT-${uuidv4()}`;
+            const myReference = reference || `TKT-${uuidv4()}`;
 
             const reservation = await tx.reservation.create({
                 data: {

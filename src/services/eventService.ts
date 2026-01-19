@@ -78,7 +78,6 @@ export class EventService {
             ...seat,
             price: toMajorUnit(seat.price),
         }));
-
         // 👇 STEP 2: Cache the FORMATTED data (Numbers, not BigInts)
         await redis.set(cacheKey, JSON.stringify(formattedSeats), 'EX', 10);
 
