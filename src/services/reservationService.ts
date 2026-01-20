@@ -74,7 +74,7 @@ export class ReservationService {
             const expiresAt = new Date();
             expiresAt.setMinutes(
                 expiresAt.getMinutes() + HOLD_DURATION_MINUTES,
-            ); // Hardcoded or use constant
+            );
 
             // 3. 👇 GENERATE REFERENCE HERE
             const myReference = reference || `TKT-${uuidv4()}`;
