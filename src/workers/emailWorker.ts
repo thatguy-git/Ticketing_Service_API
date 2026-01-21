@@ -7,11 +7,19 @@ import { SendTicketEmailJob, emailQueue } from './queues';
 const emailWorker = new Worker(
     'email-queue',
     async (job) => {
+        console.log(
+            `📧 Email worker received job: ${job.id}, type: ${job.name}`,
+        );
         const { name, data } = job;
 
         switch (name) {
             case 'SEND_TICKET_EMAIL':
-                await emailService.processTicketEmail(data as SendTicketEmailJob);
+                console.log(
+                    `📧 Processing SEND_TICKET_EMAIL job for ${data.userEmail}`,
+                );
+                await emailService.processTicketEmail(
+                    data as SendTicketEmailJob,
+                );
                 break;
 
             default:
@@ -25,7 +33,7 @@ const emailWorker = new Worker(
             max: 10, // Max 10 jobs per duration
             duration: 1000, // Per second
         },
-    }
+    },
 );
 
 // Event handlers

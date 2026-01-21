@@ -4,21 +4,65 @@ import QRCode from 'qrcode';
 import { AppError } from '../utils/AppError';
 import { SendTicketEmailJob } from '../workers/queues';
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+let transporter: nodemailer.Transporter;
+let isInitialized = false;
+
+async function initializeEmailTransporter() {
+    if (isInitialized) return;
+
+    try {
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.warn(
+                'Email env not set. Using Ethereal Email for testing.',
+            );
+
+            const testAccount = await nodemailer.createTestAccount();
+            transporter = nodemailer.createTransport({
+                host: 'smtp.ethereal.email',
+                port: 587,
+                secure: false,
+                auth: {
+                    user: testAccount.user,
+                    pass: testAccount.pass,
+                },
+                tls: {
+                    rejectUnauthorized: false,
+                },
+            });
+            console.log(
+                'Using Ethereal Email for testing. Check emails at:',
+                testAccount.web,
+            );
+        } else {
+            try {
+                transporter = nodemailer.createTransport({
+                    service: 'Gmail',
+                    secure: true,
+                    auth: {
+                        user: process.env.EMAIL_USER,
+                        pass: process.env.EMAIL_PASS,
+                    },
+                });
+            } catch (error) {
+                console.error('Error creating transporter:', error);
+            }
+        }
+
+        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+            console.log('Skipping transporter verification for Ethereal Email');
+        } else {
+            await transporter.verify();
+            console.log('Email transporter is ready to send emails');
+        }
+        isInitialized = true;
+    } catch (error: any) {
+        console.error('Email transporter verification failed:', error.message);
+        isInitialized = true;
+    }
+}
+initializeEmailTransporter();
 
 export class EmailService {
-    /**
-     * Generate a PDF ticket with QR code
-     */
     async generateTicketPDF(bookingData: SendTicketEmailJob): Promise<Buffer> {
         return new Promise(async (resolve, reject) => {
             try {
@@ -130,9 +174,22 @@ export class EmailService {
         bookingData: SendTicketEmailJob,
         pdfBuffer: Buffer,
     ): Promise<void> {
+        // Ensure transporter is initialized
+        if (!isInitialized) {
+            console.log('Initializing email transporter...');
+            await initializeEmailTransporter();
+        }
+
+        if (!transporter) {
+            throw new Error('Email transporter not initialized');
+        }
+
         try {
             const mailOptions = {
-                from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+                from:
+                    process.env.EMAIL_FROM ||
+                    process.env.EMAIL_USER ||
+                    'noreply@ticketing.com',
                 to: userEmail,
                 subject: `Your Ticket for ${bookingData.eventName}`,
                 html: this.generateTicketEmailHTML(userName, bookingData),
@@ -149,10 +206,17 @@ export class EmailService {
             console.log(
                 `✅ Ticket email sent to ${userEmail}: ${info.messageId}`,
             );
-        } catch (error) {
+
+            // If using Ethereal, log the preview URL
+            if (process.env.EMAIL_USER?.includes('ethereal.email')) {
+                console.log(
+                    `📧 Preview URL: ${nodemailer.getTestMessageUrl(info)}`,
+                );
+            }
+        } catch (error: any) {
             console.error(
                 `❌ Failed to send ticket email to ${userEmail}:`,
-                error,
+                error.message,
             );
             throw new AppError('Failed to send ticket email', 500);
         }

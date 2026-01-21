@@ -27,8 +27,8 @@ model Event {
   id          String   @id @default(uuid())
   name        String
   date        DateTime
-  organizerId String
-  organizer   User     @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizerId String?
+  organizer   User?    @relation("EventOrganizer", fields: [organizerId], references: [id])
   seats       Seat[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

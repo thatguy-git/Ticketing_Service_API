@@ -10,14 +10,12 @@ export class BookingService {
     async initiateBooking(userId: string, seatId: string) {
         const myReference = `TKT-${uuidv4()}`;
 
-        // 1. Hold the seat first
         const reservation = await reservationService.holdSeat(
             userId,
             seatId,
             myReference,
         );
 
-        // 2. Fetch seat details including Organizer Key
         const seat = await prisma.seat.findUnique({
             where: { id: seatId },
             include: { event: { include: { organizer: true } } },
@@ -89,7 +87,6 @@ export class BookingService {
                 });
             }
 
-            // Handle "Ghost" Reservations (Already Booked or Expired/Deleted)
             if (!reservation) {
                 console.log(`❌ Reservation not found at all`);
                 const existingBooking = await tx.booking.findFirst({
@@ -111,13 +108,11 @@ export class BookingService {
                 `✅ Found reservation: ${reservation.id}, expiresAt: ${reservation.expiresAt}`,
             );
 
-            // PATH A: Seat is no longer HELD (Expired logic)
             if (reservation.seat.status !== 'HELD') {
                 console.log(
                     `❌ Seat is no longer held, status: ${reservation.seat.status}`,
                 );
 
-                // If seat is AVAILABLE, we can try to save the booking (Race Condition Recovery)
                 if (reservation.seat.status === 'AVAILABLE') {
                     console.log(
                         `🔄 Seat became available, attempting to book it`,
@@ -200,7 +195,6 @@ export class BookingService {
             return booking;
         });
 
-        // 👇 FIX 2: Email Logic is now OUTSIDE transaction, using 'createdBooking'
         try {
             const user = await prisma.user.findUnique({
                 where: { id: createdBooking.userId },
@@ -213,7 +207,8 @@ export class BookingService {
             });
 
             if (user && seatWithEvent) {
-                await emailQueue.add('SEND_TICKET_EMAIL', {
+                console.log(`📧 Adding email job to queue for ${user.email}`);
+                const jobId = await emailQueue.add('SEND_TICKET_EMAIL', {
                     userEmail: user.email,
                     userName: user.name,
                     bookingId: createdBooking.id,
@@ -222,15 +217,14 @@ export class BookingService {
                     seatRow: seatWithEvent.row,
                     seatNumber: seatWithEvent.number,
                     price: toMajorUnit(createdBooking.amount),
-                    // 👇 FIX 3: Use the argument 'referenceString' since reservation is deleted
                     bookingReference: referenceString,
                 });
+                console.log(`📧 Email job queued with ID: ${jobId.id}`);
 
                 console.log(`📧 Ticket email queued for ${user.email}`);
             }
         } catch (emailError) {
             console.error('Failed to queue ticket email:', emailError);
-            // We do NOT throw here, because the booking is already confirmed.
         }
 
         return createdBooking;
