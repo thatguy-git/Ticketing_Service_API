@@ -7,15 +7,8 @@ import { toMajorUnit } from '../utils/money';
 
 export const createEvent = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
-        const { name, date, rows, seatsPerRow, price } = req.body;
+        const { name, date, rows, seatsPerRow, price } = req.validated!.body;
         const organizerId = req.user.id;
-
-        if (!name || !date || !rows || !seatsPerRow || !price) {
-            throw new AppError(
-                'Missing details (name, date, rows, seatsPerRow, price)',
-                400,
-            );
-        }
 
         if (req.user.role !== 'ORGANIZER' && req.user.role !== 'ADMIN') {
             throw new AppError(
@@ -51,7 +44,7 @@ export const getEvents = asyncHandler(async (req: Request, res: Response) => {
 
 export const getEventSeats = asyncHandler(
     async (req: Request, res: Response) => {
-        const { id } = req.params;
+        const id = req.validated!.params.seatId;
         const seats = await eventService.getEventSeats(id);
         res.status(200).json({
             status: 'success',

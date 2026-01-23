@@ -11,19 +11,15 @@ export class BookingController {
     static async createBooking(
         req: Request,
         res: Response,
-        next: NextFunction
+        next: NextFunction,
     ) {
         try {
             // Cast to your custom interface to access user.id
             const userId = (req as AuthenticatedRequest).user?.id;
-            const { seatId } = req.body;
+            const { seatId } = req.validated!.body;
 
             if (!userId) {
                 throw new AppError('User not authenticated', 401);
-            }
-
-            if (!seatId) {
-                throw new AppError('Seat ID is required', 400);
             }
 
             // Call the service to Hold the Seat & Create Invoice
