@@ -57,7 +57,7 @@ async function initializeEmailTransporter() {
         isInitialized = true;
     } catch (error: any) {
         console.error('Email transporter verification failed:', error.message);
-        isInitialized = true;
+        isInitialized = false;
     }
 }
 initializeEmailTransporter();

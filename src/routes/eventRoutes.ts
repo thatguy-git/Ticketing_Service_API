@@ -3,13 +3,20 @@ import * as eventController from '../controllers/eventController';
 import { authenticateToken } from '../middlewares/authMiddleware';
 import { checkRole } from '../middlewares/roleMiddleware';
 import { validate } from '../middlewares/validate.input';
-import { createEventValidationSchema } from '../utils/validationSchemas';
+import {
+    createEventValidationSchema,
+    getEventSeatsValidationSchema,
+} from '../utils/validationSchemas';
 
 const router = Router();
 
 // Public Routes
 router.get('/', eventController.getEvents);
-router.get('/seats/:id', eventController.getEventSeats);
+router.get(
+    '/:eventId/seats',
+    validate(getEventSeatsValidationSchema),
+    eventController.getEventSeats,
+);
 
 // Admin Routes
 router.post(

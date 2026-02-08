@@ -33,8 +33,8 @@ const createEventBodySchema = z.object({
 });
 
 // headers and param schema
-const get = z.object({
-    seatId: z.string().min(4, 'Seat ID is required'),
+const getEventSeats = z.object({
+    eventId: z.uuid({ message: 'Invalid Seat ID' }),
 });
 
 export const registerValidationSchema = z.object({
@@ -58,5 +58,5 @@ export const createEventValidationSchema = z.object({
 });
 
 export const getEventSeatsValidationSchema = z.object({
-    params: get,
+    params: getEventSeats,
 });

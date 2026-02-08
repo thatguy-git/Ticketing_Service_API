@@ -22,7 +22,7 @@ export class AuthService {
         if (tempData) {
             throw new AppError(
                 'Registration already in progress. Please check your email for OTP.',
-                400
+                400,
             );
         }
 
@@ -32,7 +32,7 @@ export class AuthService {
             `temp_reg:${email}`,
             JSON.stringify({ name, email, hashedPassword }),
             'EX',
-            600
+            600,
         );
 
         await this.sendOtp(email);
@@ -93,12 +93,12 @@ export class AuthService {
         await redis.set(`otp:${email}`, otp, 'EX', 600);
 
         const message = `
-        <h1>Verify your account</h1>
-        <p>Your verification code is: <strong>${otp}</strong></p>
-        <p>This code expires in 10 minutes.</p>
+        Verify your account
+        Your verification code is: ${otp}
+        This code expires in 10 minutes.
         `;
 
-        // await sendEmail(email, 'Your Verification Code', message);
+        await sendEmail(email, 'Your Verification Code', message);
     }
 
     private generateToken(userId: string, role: string): string {

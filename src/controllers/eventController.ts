@@ -3,7 +3,6 @@ import { eventService } from '../services/eventService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
 import { AuthenticatedRequest } from '../middlewares/authMiddleware';
-import { toMajorUnit } from '../utils/money';
 
 export const createEvent = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
@@ -44,7 +43,7 @@ export const getEvents = asyncHandler(async (req: Request, res: Response) => {
 
 export const getEventSeats = asyncHandler(
     async (req: Request, res: Response) => {
-        const id = req.validated!.params.seatId;
+        const id = req.validated!.params.eventId;
         const seats = await eventService.getEventSeats(id);
         res.status(200).json({
             status: 'success',

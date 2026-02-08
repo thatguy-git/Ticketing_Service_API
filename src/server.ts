@@ -4,9 +4,9 @@ dotenv.config();
 import { app } from './app';
 import { connectDB } from './configs/db';
 import { connectRedis } from './configs/redis';
-import './workers/emailWorker'; // Start email worker
+import './workers/emailWorker';
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
 const startServer = async () => {
     try {
