@@ -24,4 +24,7 @@ router.post(
     handlePaymentWebhook,
 );
 
+// 🔒 Get user's tickets: Returns all bookings for authenticated user
+router.get('/tickets', authenticateToken, BookingController.getTickets);
+
 export { router as bookingRoutes };

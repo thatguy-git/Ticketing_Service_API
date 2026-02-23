@@ -39,6 +39,28 @@ export class BookingController {
         }
     }
 
+    // 3️⃣ USER ACTION: List user's tickets
+    // Route: GET /api/bookings/tickets
+    static async getTickets(req: Request, res: Response, next: NextFunction) {
+        try {
+            const userId = (req as AuthenticatedRequest).user?.id;
+
+            if (!userId) {
+                throw new AppError('User not authenticated', 401);
+            }
+
+            const tickets = await bookingService.getUserTickets(userId);
+
+            res.status(200).json({
+                status: 'success',
+                results: tickets.length,
+                data: tickets,
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
     // 2️⃣ SYSTEM ACTION: Handle Payment Success
     // Route: POST /api/bookings/webhook
     // This is called by the BANKING SERVICE, not the user

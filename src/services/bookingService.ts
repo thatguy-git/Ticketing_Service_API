@@ -66,6 +66,34 @@ export class BookingService {
         };
     }
 
+    async getUserTickets(userId: string) {
+        const bookings = await prisma.booking.findMany({
+            where: { userId },
+            include: { seat: { include: { event: true } } },
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return bookings.map((b) => ({
+            id: b.id,
+            status: b.status,
+            transactionId: b.transactionId,
+            amount: toMajorUnit(b.amount),
+            createdAt: b.createdAt,
+            seat: {
+                id: b.seat.id,
+                row: b.seat.row,
+                number: b.seat.number,
+            },
+            event: b.seat.event
+                ? {
+                      id: b.seat.event.id,
+                      name: b.seat.event.name,
+                      date: b.seat.event.date,
+                  }
+                : null,
+        }));
+    }
+
     async finalizeBooking(referenceString: string, transactionId: string) {
         // 👇 FIX 1: Capture the return value of the transaction in a variable
         const createdBooking = await prisma.$transaction(async (tx) => {
